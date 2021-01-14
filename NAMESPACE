@@ -1,0 +1,8 @@
+export(new.cibn, query.cibn, sample.cibn, getVariables, getDescription, getStates, getTypes, getParSets, getCPT, dSepCheck, as.graphNEL, as.grain)
+
+S3method(print, cibn)
+S3method(summary, cibn)
+S3method(plot, cibn)
+
+import(graph, gRbase, gRain)
+importFrom("stats", "quantile", "rbinom", "rgamma", "simulate")

@@ -1,0 +1,12 @@
+Package: cibn
+Type: Package
+Title: Causal Independence Bayesian Networks
+Version: 0.0
+Date: 2021-01-14
+Author: Alessandro Magrini
+Maintainer: Alessandro Magrini <alessandro.magrini@unifi.it>
+Description: Elicitation, estimation and inference functionalities for Bayesian networks under the causal independence assumption.
+Depends: R (>= 3.5.0), graph, gRbase, gRain
+License: GPL-2
+NeedsCompilation: no
+Packaged: 2021-01-14 09:59:48 UTC; Alessandro
