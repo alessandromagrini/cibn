@@ -1,7 +1,7 @@
 # cibn
 __Causal independence Bayesian networks__
 
-`cibn` is a R package implementing elicitation, estimation and inference functionalities for Bayesian networks under the causal independence assumption.
+`cibn` is a R package implementing elicitation, estimation and inference functionalities for Bayesian networks under the causal independence assumption, i.e., non-interacting parent variables (causal independence Bayesian networks). They allow three exaustive types of variables (graded, double-graded and multi-valued nominal variables) and admit the Causal Independence Decomposition (CID), which increases efficiency of elicitation, estimation and inference. Futhermore, causal interactions can be added upon need.
 The reference paper is:
 
 A. Magrini (2021). Efficient decomposition of Bayesian networks with non-graded variables. To be appeared on _International Journal of Statistics and Probability_, 10(2).
@@ -22,7 +22,8 @@ For any request or feedback, please write to <alessandro.magrini@unifi.it> (Ales
 Below, you find some examples of use of the package.
 _________________________________________________________________
 
-In this example, we create a simple Bayesian network for inferring risk attitude of bank customers. The variables in the network are:
+In this example, we create a simple Bayesian network for inferring risk attitude of bank customers.
+The variables in the network are:
 - `Age`: age in years, double-graded variable with sample space: `(18_30, 31_50, 51_)`;
 - `Edu`: education level, double-graded variable with sample space: `(primary_or_less, secondary, tertiary)`;
 - `Marital`: marital status, graded variable with sample space: `(single, convivent)`;
@@ -30,10 +31,11 @@ In this example, we create a simple Bayesian network for inferring risk attitude
 - `Risk`: risk attitude, double-graded variable with sample space: `(low, normal, high)`;
 - `Portf`: type of portfolio, double-graded variable with sample space: `(money_market, mixed, stock_market)`;
 - `Life`: life insurance, multi-valued nominal variable with sample space: `(long_term, short_term, none)`.
-The hypothesized Directed Acyclic Graph (DAG) is shown ![here]("https://github.com/alessandromagrini/cibn/blob/main/bin/bankrisk_dag.pdf)
+The hypothesized Directed Acyclic Graph (DAG) is shown ![here](https://github.com/alessandromagrini/cibn/blob/main/bin/bankrisk_dag.pdf).
 Also, we hypothesize a causal interaction between marital status and parentship in determining risk attitude.
 
-Here is the model code with prior parameter values. Probability distributions are automatically normalized, thus the user can specify them using counts (null counts are interpreted as an uniform distribution).
+Here is the model code with prior parameter values.
+Probability distributions are automatically normalized, thus the user can specify them using counts (null counts are interpreted as an uniform distribution).
 ```
 bankrisk_code <- '
 
