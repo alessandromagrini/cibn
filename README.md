@@ -31,7 +31,7 @@ In this example, we create a simple Bayesian network for inferring risk attitude
 - `Portf`: type of portfolio, double-graded variable with sample space: (money_market, mixed, stock_market)
 - `Life`: life insurance, multi-valued nominal variable with sample space: (long_term, short_term, none).
 The hypothesized Directed Acyclic Graph (DAG) is shown in the figure below. Also, we hypothesize a causal interaction between marital status and parentship in determining risk attitude.
-![alt text](https://github.com/alessandromagrini/cibn/bin/bankrisk_dag.pdf?raw=true)
+![alt text](https://github.com/alessandromagrini/cibn/blob/main/bin/bankrisk_dag.pdf)
 
 Here is the model code with prior parameter values. Probability distributions are automatically normalized, thus the user can specify them using counts (null counts are interpreted as an uniform distribution).
 ```
