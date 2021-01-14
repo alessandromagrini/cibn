@@ -31,6 +31,7 @@ The variables in the network are:
 - `Risk`: risk attitude, double-graded variable with sample space: `(low, normal, high)`;
 - `Portf`: type of portfolio, double-graded variable with sample space: `(money_market, mixed, stock_market)`;
 - `Life`: life insurance, multi-valued nominal variable with sample space: `(long_term, short_term, none)`.
+
 The hypothesized Directed Acyclic Graph (DAG) is shown ![here](https://github.com/alessandromagrini/cibn/blob/main/bin/bankrisk_dag.pdf).
 Also, we hypothesize a causal interaction between marital status and parentship in determining risk attitude.
 
