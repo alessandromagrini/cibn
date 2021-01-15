@@ -19,7 +19,6 @@ The main functions of the package are:
   \item{\link{query.cibn}, }{to perform exact inference in a network through an interface to the \code{gRain} package;}
   \item{\link{sample.cibn}, } {to draw a random sample from a network.}
   }
-Also, method \link{plot} allows to display the DAG of a network exploiting the \code{graphNEL} class.
 }
 \author{Alessandro Magrini <alessandro.magrini@unifi.it>}
 \references{
