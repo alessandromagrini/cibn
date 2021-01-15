@@ -36,7 +36,7 @@ The hypothesized Directed Acyclic Graph (DAG) is shown ![here](https://github.co
 Also, we hypothesize a causal interaction between marital status and parentship in determining risk attitude.
 
 Here is the model code with prior parameter values.
-Probability distributions are automatically normalized, thus the user can specify them using counts (null counts are interpreted as an uniform distribution).
+Probability distributions are automatically normalized, thus the user can specify them using counts (null counts are interpreted as a uniform distribution).
 ```
 bankrisk_code <- '
 
