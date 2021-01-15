@@ -1,0 +1,383 @@
+# test if an object of class 'cibn' is correctly structured (internal use only)
+is.cibn <- function(x) {
+  resp <- T
+  if(!identical(class(x),"cibn") || !identical(names(x),c("CPTs","prior","posterior","description")) ||
+    !is.list(x[[1]]) || !is.list(x[[2]]) || !identical(sort(names(x[[1]])),sort(names(x[[2]])))) {
+    resp <- F
+    } else { 
+    nomi <- names(x$CPTs)
+    if(sum(sapply(auxnam,checkNodeName)==F)>0 ||
+      sum(sapply(x$CPTs,function(z){length(names(dimnames(z)))})==0)>0 ||
+      sum(sapply(x$prior,function(z){length(names(dimnames(z)))})==0)>0 ||
+      sum(sapply(unlist(lapply(x$CPTs,dimnames)),checkLevelName)==F)>0 ||
+      !identical(names(x$CPTs),names(x$prior)) ||
+      !identical(sapply(x$CPTs,dim),sapply(x$prior,dim)) ||
+      !identical(sapply(x$CPTs,dimnames),sapply(x$prior,dimnames)) ||
+      !identical(sort(names(x$CPTs)),sort(names(x$description)))
+      ) {
+      resp <- F
+      }
+    }
+  if(resp==T) {
+    if(is.null(x$posterior)) {
+      if(!all.equal(x$CPTs,normalise(x$prior))) resp <- F 
+      } else {
+      if(!all.equal(x$CPTs,normalise(x$posterior))) resp <- F
+      }
+    }
+  resp
+  }
+
+# compute divergence indices
+divergence <- function(x,p=0.95) {
+  if(!identical(class(x),"noisybn")) stop("The first argument must be an object of class 'noisybn'",call.=F)
+  #if(is.noisybn(x)==F) stop("The first argument must be an object of class 'noisybn'",call.=F)                            
+  if(is.null(x$posterior)) {
+    stop("The Bayesian network is not updated",call.=F)
+    } 
+  if(sum(unlist(x$prior))==0) {
+    stop("The Bayesian network has no prior distribution on parameters",call.=F)
+    }
+  postC <- W <- x$posterior
+  priorC <- x$prior
+  nomi <- names(W)
+  summ <- matrix(nrow=length(nomi),ncol=6)
+  rownames(summ) <- nomi
+  colnames(summ) <- c(">0.975","0.925-0.975","0.925-0.5","0.5-0.2","0.2-0.01","<0.01")
+  class(W) <- NULL
+  for(i in 1:length(W)) {           
+    idim <- dim(postC[[i]])        
+    ynst <- idim[1]
+    itab <- c()
+    if(length(idim)>1) {                         
+      mystr <- ""
+      ipardim <- idim[-1]
+      for(j in 1:length(ipardim)) {         
+        mystr <- paste(mystr,"for(aux",j," in 1:ipardim[",j,"]) { ; ",sep="")              
+        }     
+      mystr <- paste(mystr,paste("auxPri <- priorC[[i]][,",paste(paste("aux",1:length(ipardim),sep=""),collapse=","),"] ; ",sep=""),
+        paste("auxPos <- postC[[i]][,",paste(paste("aux",1:length(ipardim),sep=""),collapse=","),"] ; ",sep=""),
+        "if(sum(auxPos==0)==0) { ; itab <- c(); for(w in 1:ynst) { ; pci <- qbeta(c((1-p)/2,(1+p)/2),auxPri[w],sum(auxPri[-w])); ",
+        "itab[w] <- pbeta(pci[2],auxPos[w],sum(auxPos[-w]))-pbeta(pci[1],auxPos[w],sum(auxPos[-w])) } ; ",
+        "} else { itab[w] <- NA } ; ",sep="")
+      mystr <- paste(mystr,"W[[i]][,",paste(paste("aux",1:length(ipardim),sep=""),collapse=","),"] <- itab ; ",
+        paste(rep("} ",length(ipardim)),collapse="; "),sep="")
+      eval(parse(text=mystr))
+      dimnames(W[[i]]) <- dimnames(postC[[i]])
+      class(W[[i]]) <- "table"
+      } else {
+      for(w in 1:ynst) {
+        pci <- qbeta(c(0.025,0.975),priorC[[i]][w],sum(priorC[[i]][-w]))
+        itab[w] <- pbeta(pci[2],postC[[i]][w],sum(postC[[i]][-w]))-pbeta(pci[1],postC[[i]][w],sum(postC[[i]][-w]))
+        }
+      W[[i]] <- itab
+      names(W[[i]]) <- dimnames(postC[[i]])[[1]]
+      class(W[[i]]) <- "table"
+      }
+    m2 <- sum(W[[i]]>=0.975,na.rm=T)
+    m1 <- sum(W[[i]]>=0.925&W[[i]]<0.975,na.rm=T)
+    c1 <- sum(W[[i]]>=0.5&W[[i]]<0.925,na.rm=T)
+    c2 <- sum(W[[i]]>=0.2&W[[i]]<0.5,na.rm=T)
+    c3 <- sum(W[[i]]>0.01&W[[i]]<0.2,na.rm=T)
+    c4 <- sum(W[[i]]<0.01,na.rm=T)
+    summ[i,] <- c(m2,m1,c1,c2,c3,c4)
+    }
+  out <- list(W,summ)
+  names(out) <- c("divergence","summary")
+  out
+  }
+
+# compute distance between two CPTs (internal use only)
+eudis <- function(D1,D2) {
+  idim <- dimnames(D1)
+  iy <- names(idim)[1]
+  ipar <- setdiff(names(idim),iy)
+  if(length(ipar)>0) {
+    res <- 0
+    mystr <- ""
+    for(j in 1:length(ipar)) {
+      ijomeg <- idim[[ipar[j]]]
+      mystr <- paste(mystr,"for(k",j," in 1:",length(ijomeg),") {; ",sep="")
+      }
+    mystr <- paste(mystr,"dd1 <- D1[,",paste(paste("k",1:length(ipar),sep=""),collapse=","),"]; ",
+      "dd2 <- D2[,",paste(paste("k",1:length(ipar),sep=""),collapse=","),"]; ",
+      "res <- res+sum((dd1-dd2)^2)",sep="")
+    mystr <- paste(mystr,paste(rep("}",length(ipar)),collapse="; "),sep="")
+    eval(parse(text=mystr))
+    res
+    } else {
+    sum((D1-D2)^2)  
+    }
+  }
+
+# generate flat CPTs (internal use only)
+flatParams <- function(counts) {
+  theta <- normalise(counts)
+  for(i in 1:length(theta)) {     
+    idim <- dim(theta[[i]])
+    iyd <- idim[1]
+    if(length(idim)>1) {
+      ixd <- idim[-1]
+      mystr <- ""
+      for(j in 1:length(ixd)) {
+        mystr <- paste(mystr,"for(k",j," in 1:",ixd[j],") {; ",sep="")
+        }      
+      mystr <- paste(mystr,"auxth <- theta[[",i,"]][,",paste("k",1:length(ixd),sep="",collapse=","),"]; ",
+        "if(isDegen(auxth)==F) { theta[[",i,"]][,",paste("k",1:length(ixd),sep="",collapse=","),"] <- rep(1/",iyd,",",iyd,") }; ",
+        sep="")     
+      mystr <- paste(mystr,paste(rep("}",length(ixd)),collapse="; "),sep="")
+      eval(parse(text=mystr))
+      } else {
+      if(isDegen(theta[[i]])==F) {
+        theta[[i]] <- rep(1/idim[1],idim[1])
+        dim(theta[[i]]) <- idim
+        }
+      }                                             
+    dimnames(theta[[i]]) <- dimnames(counts[[i]])
+    class(theta[[i]]) <- "table"
+    }
+  theta
+  }
+
+
+############################################################################
+
+
+### stima esatta con GRAD
+
+  
+  #if(length(xtruelat)==0&sum(getTypes(x)!="GRAD")==0&exact==T) warn <- 3
+
+
+    phprm <- hprm
+    absps <- absPSets(x$CPTs,inter=T)
+    normP <- function(z){
+      if(sum(z)==0) {
+        (z+1)/sum(z+1)
+        } else {
+        z/sum(z)
+        }
+      }
+    
+      
+    #####
+      
+    jtree <- as.grain(x)
+    Enam <- colnames(data)
+    loglik <- 0
+    for(k in 1:n) {                         
+      evidk <- as.character(unlist(data[k,]))                                        
+      jtree_e <- setEvidence(jtree,Enam,evidk)
+      prk <- attr(jtree_e$equipot,"pEvidence")
+      if(prk==0) stop("Case ",k," results impossible given the model",sep="",call.=F)
+      loglik <- loglik+log(prk)
+      }
+    attr(phprm,"Score") <- loglik
+      
+    #####
+      
+
+    ix <- c()
+    for(i in 1:length(nomiLamb)) {
+      ix[i] <- strsplit(nomiLamb[i],"_o_")[[1]][2]
+      }
+    iind0 <- which(ix=="omitted")
+    ilab <- nomiLamb[c(iind0,setdiff(1:length(nomiLamb),iind0))]
+    for(i in 1:length(ilab)) {
+      #inum <- as.numeric(strsplit(strsplit(ilab[i],"Lambda")[[1]][2],"\\.")[[1]][1])
+      inam <- strsplit(strsplit(ilab[i],"Lambda[0-9]{1,}.")[[1]][2],"_o_")[[1]][1]
+      ipar <- setdiff(strsplit(ilab[i],"_o_")[[1]][2],"omitted")
+      iother <- setdiff(absps[[inam]],ipar)
+      if(length(iother)>0) {
+        indstr <- paste("&",paste(paste("data[,'",iother,"']=='",sapply(omega[iother],function(z){z[1]}),"'",sep=""),collapse="&"),sep="")
+        } else {
+        indstr <- ""
+        }
+      iyst <- omega[[inam]]
+      if(length(ipar)==0) {
+        for(w in 1:length(iyst)) {
+          mystr <- paste("iwcou <- which(data[,'",inam,"']=='",iyst[w],"'",indstr,")",sep="")  
+          eval(parse(text=mystr))
+          phprm[[ilab[i]]][w] <- phprm[[ilab[i]]][w]+length(iwcou)
+          }
+        } else {
+        ixst <- omega[[ipar]]
+        for(j in 1:length(ixst)) {
+          if(j>1) {
+            ijC <- rep(0,length(iyst))
+            for(w in 1:length(iyst)) {
+              mystr <- paste("ijwcou <- which(data[,'",inam,"']=='",iyst[w],"'&data[,'",ipar,"']=='",ixst[j],"'",indstr,")",sep="")
+              eval(parse(text=mystr))
+              ijC[w] <- length(ijwcou)
+              }
+            i0C <- phprm[[paste("Lambda1.",inam,"_o_omitted",sep="")]]
+            ithe0 <- normP(i0C)
+            ijthe <- normP(ijC)
+            ijcum <- c()
+            for(w in 1:length(iyst)) {
+              ijcum[w] <- sum(ijthe[1:w])/sum(ithe0[1:w]) 
+              }
+            ijdis <- c(ijcum[1],diff(ijcum))
+            if(sum(ijdis<0)==0) {
+              phprm[[ilab[i]]][,j] <- phprm[[ilab[i]]][,j]+ijdis*sum(ijC)
+              }
+            }
+          }
+        }
+      }
+
+
+############################################################################
+
+
+# local update (internal use only)
+localUpdate <- function(x,cpts) {
+  relev <- findRelevant(x$CPTs)
+  nomi <- names(relev)
+  res <- list()
+  auxnam <- c()
+  for(i in 1:length(nomi)) {
+    inam <- nomi[i]
+    ipar <- relev[[inam]]$par
+    iaux <- setdiff(relev[[inam]]$aux,inam)
+    D0 <- cpts[[inam]]
+    theta0 <- x$CPTs[iaux]
+    myf <- function(z) {
+      D1 <- cptCalc(z,inam,ipar,iaux)
+      eudis(D0,D1)
+      }
+    thetaNEW <- optim(theta0,myf)
+    res <- c(res,thetaNEW$par)
+    auxnam <- c(auxnam,names(theta0))
+    }
+  names(res) <- auxnam
+  res
+  }
+
+
+### stima esatta    
+
+
+    phprm <- hprm
+    absps <- absPSets(x$CPTs,inter=T)
+    vtype <- getTypes(x)
+    if(length(nomiInter)>0) vtype[nomiInter] <- "NOM"
+    vneu <- c()
+    for(i in 1:length(vtype)) {
+      iom <- omega[[names(vtype)[i]]]
+      if(vtype[i]=="DGRAD") {
+        vneu[i] <- iom[(1+length(iom))/2]          
+        } else {
+        vneu[i] <- iom[1]
+        }
+      }
+    names(vneu) <- names(vtype)
+    for(i in 1:length(nomiLamb)) {
+      ilab <- nomiLamb[i]
+      inum <- as.numeric(strsplit(strsplit(ilab,"Lambda")[[1]][2],"\\.")[[1]][1])
+      inam <- strsplit(strsplit(ilab,"Lambda[0-9]{1,}.")[[1]][2],"_o_")[[1]][1]
+      ipar <- setdiff(strsplit(ilab,"_o_")[[1]][2],"omitted")
+      iother <- setdiff(absps[[inam]],ipar)
+      if(length(iother)>0) {
+        indstr <- paste("&",paste(paste("data[,'",iother,"']=='",vneu[iother],"'",sep=""),collapse="&"),sep="")
+        } else {
+        indstr <- ""
+        }
+      iyst <- omega[[inam]]
+      if(length(ipar)==0) {
+        if(vtype[inam]=="GRAD"|length(parSet[[inam]])<2) {
+          for(w in 1:length(iyst)) {
+            mystr <- paste("icou <- which(data[,'",inam,"']=='",iyst[w],"'",indstr,")",sep="")  
+            eval(parse(text=mystr))
+            phprm[[ilab]][w] <- phprm[[ilab]][w]+length(icou)
+            }
+          } else {
+          if(vtype[inam]=="DGRAD") {
+            whneu <- (1+length(iyst))/2
+            if(inum==1) {
+              for(w in 1:whneu) {
+                mystr <- paste("icou <- which(data[,'",inam,"']=='",iyst[w],"'",indstr,")",sep="")  
+                eval(parse(text=mystr))
+                phprm[[ilab]][w] <- phprm[[ilab]][w]+length(icou)
+                }
+              } else {
+              for(w in whneu:length(iyst)) {
+                mystr <- paste("icou <- which(data[,'",inam,"']=='",iyst[w],"'",indstr,")",sep="")  
+                eval(parse(text=mystr))
+                phprm[[ilab]][w-whneu+1] <- phprm[[ilab]][w-whneu+1]+length(icou)
+                }  
+              }
+            } else if(vtype[inam]=="NOM") {
+            mystr0 <- paste("icou0 <- which(data[,'",inam,"']!='",iyst[inum+1],"'",indstr,")",sep="")  
+            mystr1 <- paste("icou1 <- which(data[,'",inam,"']=='",iyst[inum+1],"'",indstr,")",sep="")
+            eval(parse(text=mystr0))
+            eval(parse(text=mystr1))
+            phprm[[ilab]][1] <- phprm[[ilab]][1]+length(icou0)
+            phprm[[ilab]][2] <- phprm[[ilab]][2]+length(icou1)
+            }
+          }
+        } else {
+        ixst <- omega[[ipar]]
+        if(vtype[inam]=="GRAD"|length(parSet[[inam]])<2) {
+          for(j in 1:length(ixst)) {
+            if(ixst[j]!=vneu[ipar]) {
+              for(w in 1:length(iyst)) {
+                mystr <- paste("ijcou <- which(data[,'",inam,"']=='",iyst[w],"'&data[,'",ipar,"']=='",ixst[j],"'",indstr,")",sep="")
+                eval(parse(text=mystr))
+                phprm[[ilab]][w,j] <- phprm[[ilab]][w,j]+length(ijcou)
+                }
+              }
+            }
+          } else {
+          if(vtype[inam]=="DGRAD") {
+            whneu <- (1+length(iyst))/2
+            if(inum==1) {
+              for(j in 1:length(ixst)) {
+                if(ixst[j]!=vneu[ipar]) {
+                  for(w in 1:whneu) {
+                    mystr <- paste("ijcou <- which(data[,'",inam,"']=='",iyst[w],"'&data[,'",ipar,"']=='",ixst[j],"'",indstr,")",sep="")
+                    eval(parse(text=mystr))
+                    phprm[[ilab]][w,j] <- phprm[[ilab]][w,j]+length(ijcou)
+                    }
+                  }
+                }
+              } else {
+              for(j in 1:length(ixst)) {
+                if(ixst[j]!=vneu[ipar]) {
+                  for(w in whneu:length(iyst)) {
+                    mystr <- paste("ijcou <- which(data[,'",inam,"']=='",iyst[w],"'&data[,'",ipar,"']=='",ixst[j],"'",indstr,")",sep="")
+                    eval(parse(text=mystr))
+                    phprm[[ilab]][w-whneu+1,j] <- phprm[[ilab]][w-whneu+1,j]+length(ijcou)
+                    }
+                  }
+                }
+              }
+            } else if(vtype[inam]=="NOM") {
+            for(j in 1:length(ixst)) {
+              if(ixst[j]!=vneu[ipar]) {
+                mystr0 <- paste("ijcou0 <- which(data[,'",inam,"']!='",iyst[inum+1],"'&data[,'",ipar,"']=='",ixst[j],"'",indstr,")",sep="")
+                mystr1 <- paste("ijcou1 <- which(data[,'",inam,"']=='",iyst[inum+1],"'&data[,'",ipar,"']=='",ixst[j],"'",indstr,")",sep="")
+                eval(parse(text=mystr0))
+                eval(parse(text=mystr1))
+                phprm[[ilab]][1,j] <- phprm[[ilab]][1,j]+length(ijcou0)
+                phprm[[ilab]][2,j] <- phprm[[ilab]][2,j]+length(ijcou1)
+                }
+              }
+            }
+          } 
+        }
+      }
+    if(score==T) {
+      jtree <- as.grain(x)
+      Enam <- colnames(data)
+      loglik <- 0
+      for(k in 1:n) {                         
+        evidk <- as.character(unlist(data[k,]))                                        
+        jtree_e <- setEvidence(jtree,Enam,evidk)
+        prk <- attr(jtree_e$equipot,"pEvidence")
+        if(prk==0) stop("Case ",k," results impossible given the model",sep="",call.=F)
+        loglik <- loglik+log(prk)
+        }
+      attr(phprm,"Score") <- loglik
+      }
+    

@@ -11,8 +11,7 @@
   Date: \tab 2021-01-07\cr
   License: \tab GPL-2
   }
-Causal independence Bayesian networks (Magrini, 2021) are Bayesian networks with non-interacting parent variables (causal independence assumption). They allow three exaustive types of variables (graded, double-graded and multi-valued nominal variables) and admit the Causal Independence Decomposition (CID), which increases efficiency of elicitation, estimation and exact inference.
-Also, causal interactions can be added upon need.
+Causal independence Bayesian networks (Magrini, 2021) are Bayesian networks with non-interacting parent variables (causal independence assumption). They allow three exaustive types of variables (graded, double-graded and multi-valued nominal variables) and admit the Causal Independence Decomposition (CID), which increases efficiency of elicitation, estimation and inference. Ccausal interactions can be added upon need.
 The main functions of the package are:
 \itemize{
   \item{\link{new.cibn}, }{to create a new network based on prior knowledge;}

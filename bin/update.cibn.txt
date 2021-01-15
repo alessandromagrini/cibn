@@ -1,0 +1,282 @@
+# convert CPTs to data frame (internal use only)
+table2dframe <- function(x) {
+  auxdat <- as.data.frame(x)
+  freq <- auxdat[,"Freq"]
+  auxind <- c()
+  for(i in 1:nrow(auxdat)){
+    if(freq[i]>0) {
+      if(!identical(freq[i],round(freq[i]))) {
+        iu <- rbinom(1,1,0.5)
+        ifelse(iu==0,ifreq<-floor(freq[i]),ifreq<-ceiling(freq[i]))
+        } else {
+        ifreq <- freq[i]  
+        }
+      auxind <- c(auxind,rep(i,ifreq))
+      }
+    }
+  res <- auxdat[auxind,setdiff(colnames(auxdat),"Freq")]
+  rownames(res) <- NULL
+  res
+  }
+
+# compute sufficient statistics from complete data (internal use only)
+getCounts <- function(priorCounts,data,variables=NULL) {
+  nomi <- names(priorCounts)
+  myvar <- intersect(nomi,variables)
+  if(length(myvar)==0) myvar <- nomi
+  phprm <- priorCounts[myvar]
+  class(phprm) <- NULL
+  for(i in 1:length(myvar)) {    
+    mystr <- "data[,myvar[i]]"
+    idim <- dim(phprm[[myvar[i]]])
+    if(length(idim)>1) {                         
+      ipar <- names(dimnames(phprm[[myvar[i]]]))[-1]   
+      for(j in 1:length(ipar)) {         
+        mystr <- paste(mystr,"+data[,ipar[",j,"]]",sep="")
+        }
+      }
+    itab <- eval(parse(text=paste("xtabs(~",mystr,")",sep="")))
+    phprm[[myvar[i]]] <- phprm[[myvar[i]]]+itab
+    class(phprm[[myvar[i]]]) <- "table"
+    }
+  phprm
+  }
+
+# generate flat CPTs (internal use only)
+flatParams <- function(counts) {
+  theta <- normalise(counts)
+  for(i in 1:length(theta)) {     
+    idim <- dim(theta[[i]])
+    iyd <- idim[1]
+    if(length(idim)>1) {
+      ixd <- idim[-1]
+      mystr <- ""
+      for(j in 1:length(ixd)) {
+        mystr <- paste(mystr,"for(k",j," in 1:",ixd[j],") {; ",sep="")
+        }      
+      mystr <- paste(mystr,"auxth <- theta[[",i,"]][,",paste("k",1:length(ixd),sep="",collapse=","),"]; ",
+        "if(isDegen(auxth)==F) { theta[[",i,"]][,",paste("k",1:length(ixd),sep="",collapse=","),"] <- rep(1/",iyd,",",iyd,") }; ",sep="")     
+      mystr <- paste(mystr,paste(rep("}",length(ixd)),collapse="; "),sep="")
+      eval(parse(text=mystr))
+      } else {
+      if(isDegen(theta[[i]])==F) {
+        theta[[i]][] <- rep(1/idim[1],idim[1])
+        }
+      }
+    }
+  theta
+  }
+
+# update a network
+update.cibn <- function(x,data=NULL,tol=1e-4,maxit=500,flush=FALSE) {
+  if(!identical(class(x),"cibn")) stop("The first argument must be an object of class 'cibn'",call.=F)
+  parSet <- fullPSets(x$CPTs)
+  omega <- fullOmega(x$CPTs)
+  nomi <- names(parSet)                                   
+  lambSet <- findLambda(x$CPTs)
+  auxSet <- findAux(x$CPTs)
+  intSet <- findInter(x$CPTs,resp=F)
+  nomiLamb <- nomiLearn <- unname(unlist(lambSet))
+  nomiAux <- unname(unlist(auxSet))
+  nomiInter <- names(intSet)
+  warn <- 0
+  if(is.null(data)) {
+    voidat <- matrix(NA,nrow=1,ncol=length(nomi))
+    for(i in 1:ncol(voidat)) {
+      voidat[,i] <- factor(voidat[,i],levels=omega[[nomi[i]]]) 
+      }
+    colnames(voidat) <- nomi
+    data <- data.frame(voidat)
+    warning("The dataset is empty. Estimates are entirely based on the prior",call.=F)
+    warn <- 1
+    } else {
+    if(!is.data.frame(data)) {
+      stop("Data must be an object of class 'data.frame'",call.=F)
+      }
+    unknVar <- setdiff(colnames(data),nomi)
+    data <- data[,setdiff(colnames(data),unknVar)]
+    if(length(nomiInter)>0) {
+      for(i in 1:length(nomiInter)) {
+        inam <- nomiInter[i]
+        ipar <- intSet[[inam]]$from
+        if(identical(sort(intersect(colnames(data),ipar)),sort(ipar))) {
+          iNA <- idat <- apply(data[,ipar],1,function(z){1*(sum(is.na(z))>0)})
+          idat <- apply(data[,ipar],1,paste,collapse="+")
+          idat[which(iNA==1)] <- NA
+          data[,nomiInter[i]] <- factor(idat,levels=omega[[nomiInter[i]]])
+          }
+        }
+      }
+    auxlat <- apply(data,2,function(z){sum(is.na(z))==length(z)})
+    xobs <- names(which(auxlat==F))
+    n <- nrow(data)
+    for(i in 1:length(xobs)) {
+      ilev <- unique(data[,xobs[i]])
+      iomeg <- omega[[xobs[i]]]
+      auxun <- setdiff(ilev,c(iomeg,NA))
+      if(length(auxun)>0) warning("Some levels are unknown for variable ",xobs[i]," and they have been taken as missing values: ",paste(auxun,collapse=", "),call.=F)
+      data[,xobs[i]] <- factor(data[,xobs[i]],levels=iomeg)
+      }  
+    xlat <- setdiff(nomi,xobs)
+    xlat2 <- setdiff(xlat,nomiInter)
+    if(length(xlat2)>0) {
+      oldnam <- colnames(data)
+      for(i in 1:length(xlat2)) {
+        idat <- factor(rep(NA,n),levels=omega[[xlat2[i]]])
+        data <- cbind(data,idat)
+        }
+      colnames(data) <- c(oldnam,xlat2)
+      }
+    xmiss <- setdiff(getVariables(x),xobs)
+    if(length(xmiss)>0) warning("Some variables are latent: ",paste(xmiss,collapse=", "),call.=F)
+    if(length(unknVar)>0) warning("Some variables are unknown and they have been ignored: ",paste(unknVar,collapse=", "),call.=F)
+    if(sum(is.na(data))==ncol(data)*n) {
+      warning("The dataset is empty. Estimates are entirely based on the prior",call.=F)
+      warn <- 1
+      }
+    xtruelat <- setdiff(xlat,c(nomiLamb,nomiAux))
+    if(length(xlat)==0) warn <- 2
+    if(length(xtruelat)==0) warn <- 3
+    }
+  if(is.null(x$posterior)) {
+    hprm <- x$prior
+    } else {
+    hprm <- x$posterior   
+    }
+  xlat <- setdiff(nomi,colnames(data))
+  if(length(xlat>0)) {
+    for(i in 1:length(xlat)) {
+      data[,xlat[i]] <- factor(rep(NA,n),levels=omega[[xlat[i]]])
+      } 
+    }
+  if(warn==1) {     
+    phprm <- hprm
+    } else if(warn==2) {
+    phprm <- getCounts(hprm,data)
+    } else {
+	  if(tol<=0) stop("Invalid tolerance",call.=F)
+    if(maxit<=1 || round(maxit)!=maxit) stop("Invalid limit of iterations",call.=F)
+    ndec <- abs(log(tol,10))
+    cat("Executing EM algorithm...","\n")
+    phprm <- hprm                    
+    thetaStart <- normalise(hprm)
+    #thetaStart <- flatParams(hprm)
+    currentLik <- -Inf
+    currentNet <- list(CPTs=thetaStart,prior=thetaStart,posterior=NULL,description=x$description)        
+    class(currentNet) <- "cibn"                             
+    Enam <- colnames(data)
+    ind <- 1
+    fine <- 0
+    while(fine==0) {                                  
+      jtree <- as.grain(currentNet)
+      loglik <- 0
+      for(k in 1:n) { 
+        evidk <- as.character(unlist(data[k,]))                           
+        jtree_e <- setEvidence(jtree,Enam,evidk)
+        prk <- attr(jtree_e$equipot,"pEvidence")
+        if(prk==0) stop("Case ",k," results impossible given the model",sep="",call.=F)
+        loglik <- loglik+log(prk)
+        #compile(jtree_e)
+        for(i in 1:length(nomiLearn)) {       
+          inam <- nomiLearn[i]                               
+          ipar <- parSet[[inam]]                 
+          expc <- aperm(querygrain(jtree_e,nodes=c(inam,ipar),type="joint",exclude=F),c(inam,ipar))
+          #if(any(is.na(expc))) stop("Zero normalization constant occurs. Reduce the number of structural 0s in the CPTs and retry.",call.=F)
+          phprm[[inam]] <- phprm[[inam]]+expc
+          }                                 
+        }                                                   
+      currentNet <- list(CPTs=normalise(phprm),prior=hprm,posterior=phprm,description=x$description)  
+      class(currentNet) <- "cibn"
+      if(flush==F) {
+        cat("Iteration ",ind,". Score: ",round(loglik,abs(log(tol,10))),sep="","\n")
+        } else {
+        cat("\r","Iteration ",ind,". Score: ",round(loglik,ndec),rep(" ",ndec+1),sep="")
+        flush.console()
+        }
+      delta <- ifelse(ind==1,Inf,abs((currentLik-loglik)/currentLik))
+      if(delta<tol | ind>=maxit) {
+        if(flush==T) cat("\n")
+        fine <- 1
+        if(ind<maxit) {
+          cat("Convergence reached.","\n")
+          } else {
+          cat("Limit of iterations exceeded.",sep="","\n")
+          }
+        } else {
+        currentCounts <- phprm
+        currentLik <- loglik
+        phprm <- hprm
+        ind <- ind+1
+        }   
+      }    
+    attr(phprm,"Score") <- loglik
+    }
+  out <- list(CPTs=normalise(phprm),prior=hprm,posterior=phprm,description=x$description) 
+  class(out) <- "cibn"
+  out
+  }
+
+# get the score
+getScore <- function(x) {
+  if(!identical(class(x),"cibn")) stop("The first argument must be an object of class 'cibn'",call.=F)
+  if(!is.null(x$posterior)) {
+    attr(x$posterior,"Score")
+    } else {
+    NULL  
+    }
+  }
+
+# perturb a dataset
+perturb <- function(data,pmiss=0,method="MAR",latent=NULL) {
+  if((method %in% c("MCAR","MAR"))==F) {                              
+    stop("Argument 'method' must be either 'MCAR' or 'MAR'",call.=F)
+    }
+  if(!is.data.frame(data)) {
+    stop("Data must be an object of class 'data.frame'",call.=F)
+    }
+  omega <- lapply(data,levels)
+  nlev <- sapply(omega,length)
+  if(sum(nlev<2)>0) {
+    stop("Variables must be factors with at least 2 levels",call.=F)
+    }  
+  if(length(pmiss)!=1 || (pmiss<0 | pmiss>1)) {
+    stop("Argument 'pmiss' must be a number between 0 and 1",call.=F)
+    }
+  if(!is.null(latent) && length(setdiff(latent,colnames(data)))>0) {
+    stop("Unexpected variable",call.=F)
+    }
+  n <- nrow(data); k <- ncol(data)
+  mydat <- data
+  nomi <- colnames(mydat)
+  if(method=="MCAR") {
+    for(i in 1:length(nomi)) {
+      u <- which(rbinom(n,1,pmiss)==1)        
+      if(length(u)>0) mydat[u,nomi[i]] <- NA
+      }
+    } else {                                                                                  
+    ind <- 1
+    maxpar <- function(x){ max(round(1+length(nomi)-10*length(nomi)*x/n),1) }
+    while(sum(is.na(mydat))/(n*k)<pmiss) {
+      u <- which(rbinom(k,1,0.5)==1)
+      while(length(u)<2) {
+        u <- which(rbinom(k,1,0.5)==1)      
+        }
+      y <- sample(u,1)
+      x <- setdiff(u,y)
+      if(length(x)>maxpar(ind)) x <- x[1:maxpar(ind)]
+      xval <- c()
+      for(i in 1:length(x)) {
+        xval[i] <- sample(1:length(omega[[nomi[x[i]]]]),1)
+        } 
+      mystr <- paste("for(i in 1:nrow(mydat)) { ; if(!is.na(mydat[i,nomi[",y,"]])) { ; ",
+        "if(sum(",paste("mydat[i,nomi[",x,"]]==omega[[nomi[",x,"]]][",xval,"]",collapse="&",sep=""),",na.rm=T)>0) { ; ",
+        "if(rbinom(1,1,pmiss)==1) mydat[i,nomi[",y,"]] <- NA ; } ; } ; } ",sep="")                     
+      eval(parse(text=mystr))
+      ind <- ind+1                              
+      }
+    }
+  for(i in 1:nrow(mydat)) {
+    mydat[i,latent] <- NA                               
+    }
+  mydat
+  }

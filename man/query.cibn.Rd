@@ -1,12 +1,12 @@
 \name{query.cibn}
 \alias{query.cibn}
 \title{Inference in a causal independence Bayesian network}
-\description{Exact inference is performed in a causal independence Bayesian network through the joint tree algorithm (interface to the \code{gRain} package)}
+\description{Perform exact inference in a causal independence Bayesian network through the joint tree algorithm (interface to the \code{gRain} package)}
 \usage{query.cibn(x, target=NULL, evidence=NULL, type="marginal")}
 \arguments{
   \item{x}{An object of class \code{cibn}.}
-  \item{target}{The name of the target variable. If \code{NULL} (the default), all the variables in the Bayesian networks will be set as targets.}
-  \item{evidence}{A named list of named vectors indicating the evidence. Each component of the list must indicate the evidence on a specific variable in the form of a vector of state names.}
+  \item{target}{The name of the target variable. If \code{NULL} (the default), all the variables in the Bayesian network will be set as targets.}
+  \item{evidence}{A named list with each component indicating the evidence on a specific variable in the form of a vector of state names. See the examples below.}
   \item{type}{A character string indicating the type of inference: \code{"marginal"}, \code{"joint"} or \code{"conditional"}. Default is \code{"marginal"}.}  
 }
 \value{A list with one component for each variable in the Bayesian network, indicating its probability distribution given the evidence.}
@@ -16,10 +16,12 @@ S. L. Lauritzen and D. J. Spiegelhalter (1988). Local computations with probabil
 }
 \seealso{\link{new.cibn}; \link{sample.cibn}.}
 \examples{
-## NOT RUN
-#bankrisk_bn <- new.cibn(bankrisk_code)
-#getStates(bankrisk_bn)  ## see the sample spaces
-#query.cibn(bankrisk_bn, target="Risk", evidence=list(Age="31_50",Portf="mixed"))
-#query.cibn(bankrisk_bn, target="Risk", evidence=list(Age="31_50",Portf="money_market"))
-#query.cibn(bankrisk_bn, target="Risk", evidence=list(Age="31_50",Portf="stock_market"))
+data(bankrisk_code)
+bankrisk_bn <- new.cibn(bankrisk_code)
+#
+getStates(bankrisk_bn)  ## see the sample spaces
+#
+query.cibn(bankrisk_bn, target="Risk", evidence=list(Age="31_50",Portf="mixed"))
+query.cibn(bankrisk_bn, target="Risk", evidence=list(Age="31_50",Portf="money_market"))
+query.cibn(bankrisk_bn, target="Risk", evidence=list(Age="31_50",Portf="stock_market"))
 }

@@ -9,4 +9,4 @@ Description: Elicitation, estimation and inference functionalities for Bayesian 
 Depends: R (>= 3.5.0), graph, gRbase, gRain
 License: GPL-2
 NeedsCompilation: no
-Packaged: 2021-01-14 09:59:48 UTC; Alessandro
+Packaged: 2021-01-15 07:27:48 UTC; Alessandro

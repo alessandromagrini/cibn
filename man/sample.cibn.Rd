@@ -1,7 +1,7 @@
 \name{sample.cibn}
 \alias{sample.cibn}
-\title{Draw a sample from a causal independence Bayesian network}
-\description{A random sample of observations is drawn from a causal independence Bayesian network}
+\title{Sampling from a causal independence Bayesian network}
+\description{Draw a random sample from a causal independence Bayesian network}
 \usage{sample.cibn(x, nsam, seed=NULL)}
 \arguments{
   \item{x}{An object of class \code{cibn}.}
@@ -13,7 +13,10 @@
 %\references{}
 \seealso{\link{new.cibn}; \link{query.cibn}.}
 \examples{
-## NOT RUN
-#bankrisk_bn <- new.cibn(bankrisk_code)
-#sample.cibn(bankrisk_bn, nsam=100)
+data(bankrisk_code)
+bankrisk_bn <- new.cibn(bankrisk_code)
+#
+bankrisk_sam <- sample.cibn(bankrisk_bn, nsam=100)
+head(bankrisk_sam)
+summary(bankrisk_sam)
 }

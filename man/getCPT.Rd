@@ -25,14 +25,17 @@ getCPT(x, variables=NULL)
 %\references{}
 \seealso{\link{new.cibn}.}
 \examples{
-## NOT RUN:
-#bankrisk_bn <- new.cibn(bankrisk_code)
-#getVariables(bankrisk_bn)
-#getTypes(bankrisk_bn)
-#getStates(bankrisk_bn)
-#getDescription(bankrisk_bn)
-#getParSets(bankrisk_bn)
-#getParSets(bankrisk_bn, full=TRUE)  ## parent sets of the full DAG
-#getCPT(bankrisk_bn)  ## CPTs of all variables
-#getCPT(bankrisk_bn, variables=c("Portf","Life"))
+data(bankrisk_code)
+bankrisk_bn <- new.cibn(bankrisk_code)
+#
+getVariables(bankrisk_bn)
+getTypes(bankrisk_bn)
+getStates(bankrisk_bn)
+getDescription(bankrisk_bn)
+#
+getParSets(bankrisk_bn)
+getParSets(bankrisk_bn, full=TRUE)  ## parent sets of the full DAG
+#
+getCPT(bankrisk_bn)  ## CPTs of all variables
+getCPT(bankrisk_bn, variables=c("Portf","Life"))
 }

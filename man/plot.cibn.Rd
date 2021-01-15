@@ -16,8 +16,9 @@
 %\references{}
 \seealso{\link{new.cibn}.}
 \examples{
-## NOT RUN:
-#bankrisk_bn <- new.cibn(bankrisk_code)
-#plot(bankrisk_bn, attrs=list(edge=list(arrowsize=0.5)))
-#plot(bankrisk_bn, attrs=list(edge=list(arrowsize=0.5)), full=TRUE)  ## full DAG
+data(bankrisk_code)
+bankrisk_bn <- new.cibn(bankrisk_code)
+#
+plot(bankrisk_bn, attrs=list(edge=list(arrowsize=0.5)))
+plot(bankrisk_bn, attrs=list(edge=list(arrowsize=0.5)), full=TRUE)  ## full DAG
 }

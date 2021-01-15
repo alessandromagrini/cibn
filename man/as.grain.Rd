@@ -11,8 +11,9 @@
 %\references{}
 \seealso{\link{new.cibn}.}
 \examples{
-## NOT RUN:
-#bankrisk_bn <- new.cibn(bankrisk_code)
-#G <- as.grain(bankrisk_bn)
-#G
+data(bankrisk_code)
+bankrisk_bn <- new.cibn(bankrisk_code)
+#
+G <- as.grain(bankrisk_bn)
+G
 }
