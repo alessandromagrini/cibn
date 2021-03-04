@@ -1,10 +1,10 @@
 # cibn
 __Causal independence Bayesian networks__
 
-`cibn` is a R package implementing elicitation, estimation and inference functionalities for Bayesian networks under the causal independence assumption, i.e., non-interacting parent variables, called _causal independence Bayesian networks_. They allow three exaustive types of variables (graded, double-graded and multi-valued nominal variables) and admit the Causal Independence Decomposition (CID), which increases efficiency of elicitation, estimation and inference. Causal interactions can be added upon need.
+`cibn` is an R package implementing elicitation, estimation and inference functionalities for Bayesian networks under the causal independence assumption, i.e., non-interacting parent variables, called _causal independence Bayesian networks_. They allow three exaustive types of variables (graded, double-graded and multi-valued nominal variables) and admit the Causal Independence Decomposition (CID), which increases efficiency of elicitation, estimation and inference. Causal interactions can be added upon need.
 The reference paper is:
 
-A. Magrini (2021). Efficient decomposition of Bayesian networks with non-graded variables. To be appeared on _International Journal of Statistics and Probability_, 10(2).
+A. Magrini (2021). Efficient decomposition of Bayesian networks with non-graded variables. _International Journal of Statistics and Probability_, 10(2): 52-67.
 
 
 R (The R Project for Statistical Computing) needs to be installed on your system in order
