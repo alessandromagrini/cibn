@@ -22,6 +22,10 @@ For any request or feedback, please write to <alessandro.magrini@unifi.it> (Ales
 Below, you find some examples of use of the package.
 _________________________________________________________________
 
+Load the `cibn` package
+```
+library(cibn)
+```
 In this example, we create a simple Bayesian network to infer risk attitude of bank customers.
 The variables in the network are:
 - `Age`: age in years, double-graded variable with sample space: `(18_30, 31_50, 51_)`;
